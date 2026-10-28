@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResQMesh - Internet-Independent Tactical & Disaster LoRa P2P Network</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="tactical-theme">
+
+    <!-- Top Navigation & Command Bar -->
+    <header class="top-bar">
+        <div class="brand">
+            <div class="radar-pulse"></div>
+            <div class="brand-text">
+                <h1>ResQMesh <span class="tag">OFF-GRID LoRa P2P</span></h1>
+                <p class="subtitle">Internet-Independent Emergency & Tactical Mesh Network</p>
+            </div>
+        </div>
+
+        <div class="scenario-selector-wrap">
+            <label for="scenarioSelect">Mission Scenario:</label>
+            <select id="scenarioSelect" onchange="changeScenario(this.value)">
+                <option value="disaster" selected>Disaster Relief: Power Grid & Cell Collapse</option>
+                <option value="sar">Search & Rescue: Alpine Pass & Drone Relay</option>
+                <option value="expedition">Wilderness Expedition: Store & Forward Caching</option>
+                <option value="tactical">Tactical Perimeter: Multi-Path Self-Healing</option>
+            </select>
+        </div>
+
+        <div class="telemetry-bar">
+            <div class="telem-item">
+                <span class="label">PDR RATE</span>
+                <span class="value val-green" id="telemPdr">100.0%</span>
+            </div>
+            <div class="telem-item">
+                <span class="label">CHANNEL DUTY</span>
+                <span class="value val-cyan" id="telemDuty">0.08%</span>
+            </div>
+            <div class="telem-item">
+                <span class="label">ACTIVE NODES</span>
+                <span class="value val-gold" id="telemNodes">4 Online</span>
+            </div>
+            <div class="telem-item">
+                <span class="label">RADIO PHY</span>
+                <span class="value" id="telemPhy">SF9 / 125kHz</span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn btn-sos pulse-red" onclick="openSosModal()">
+                🚨 TRIGGER SOS
+            </button>
+            <button class="btn btn-secondary" onclick="openBenchmarkModal()">
+                📊 BENCHMARKS
+            </button>
+            <button class="btn btn-outline" onclick="openNetworkModal()">
+                🌐 ANY NETWORK ACCESS
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="main-grid">
+
+        <!-- Left / Center: Tactical Canvas & Network Map -->
+        <section class="canvas-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span class="icon">🛰️</span>
+                    <span id="scenarioTitle">Disaster Relief & Power Grid Collapse</span>
+                </div>
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label>Spreading Factor:</label>
+                        <select id="sfSelect" onchange="updateRadioParams()">
+                            <option value="7">SF7 (Fast / 2km)</option>
+                            <option value="8">SF8 (Balanced)</option>
+                            <option value="9" selected>SF9 (Tactical SAR / 5km)</option>
+                            <option value="10">SF10 (Long Range / 8km)</option>
+                            <option value="11">SF11 (Deep Penetration)</option>
+                            <option value="12">SF12 (Max Range / 12km)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Tx Power:</label>
+                        <select id="txPowerSelect" onchange="updateRadioParams()">
+                            <option value="14" selected>14 dBm (25 mW Standard)</option>
+                            <option value="20">20 dBm (100 mW High Power)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-xs" onclick="resetNodePositions()">Reset Nodes</button>
+                </div>
+            </div>
+
+            <!-- Interactive Radar Canvas -->
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="meshCanvas"></canvas>
+                
+                <!-- On-canvas dynamic tooltip -->
+                <div id="linkTooltip" class="canvas-tooltip hidden"></div>
+
+                <!-- Canvas Legend -->
+                <div class="canvas-legend">
+                    <div class="legend-item"><span class="dot dot-green"></span> Strong RSSI (&gt; -85 dBm)</div>
+                    <div class="legend-item"><span class="dot dot-amber"></span> Marginal RSSI (-85 to -115 dBm)</div>
+                    <div class="legend-item"><span class="dot dot-red"></span> Out of Range (&lt; -125 dBm)</div>
+                    <div class="legend-item"><span class="dot dot-pulse"></span> LoRa RF Hop</div>
+                </div>
+
+                <!-- Draggable instructions overlay -->
+                <div class="canvas-hint">
+                    🖱️ <em>Drag nodes to alter physical distance and simulate terrain separation</em>
+                </div>
+            </div>
+
+            <!-- Real-time Mission Status Banner -->
+            <div class="mission-brief-bar">
+                <span class="brief-tag">MISSION BRIEF:</span>
+                <span id="scenarioDesc">Cell towers down. Hilltop relay bridges communications between flood victims and Base Command.</span>
+            </div>
+        </section>
+
+        <!-- Right Panel: Multi-Role Terminal & P2P Chat -->
+        <aside class="terminal-panel">
+            <div class="terminal-header">
+                <div class="terminal-tabs" id="nodeTabs">
+                    <!-- Dynamic tabs populated via JS: HQ, Rescue, Relay, Survivor -->
+                </div>
+            </div>
+
+            <!-- Active Node Persona Card -->
+            <div class="persona-card" id="personaCard">
+                <div class="persona-info">
+                    <span class="role-badge" id="personaRole">COMMAND</span>
+                    <strong id="personaName">Incident Command HQ</strong>
+                    <div class="persona-coords" id="personaCoords">GPS: 34.0522° N, 118.2437° W</div>
+                </div>
+                <div class="persona-stats">
+                    <div class="stat"><span class="lbl">BATTERY:</span> <span class="val val-green" id="personaBattery">98.5%</span></div>
+                    <div class="stat"><span class="lbl">BUFFER:</span> <span class="val" id="personaBuffer">0 pkts</span></div>
+                    <div class="stat"><span class="lbl">TX/RX:</span> <span class="val" id="personaTxRx">0 / 0</span></div>
+                </div>
+            </div>
+
+            <!-- Live Message Stream / Inbox -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    <div class="empty-icon">📡</div>
+                    <p>Mesh Radio Listening on 868.1 MHz...</p>
+                    <small>Zero internet connection required. All packets route peer-to-peer.</small>
+                </div>
+            </div>
+
+            <!-- Quick Tactical Canned Responses -->
+            <div class="quick-responses">
+                <button class="btn-chip" onclick="quickSend('📍 Grid coordinates verified. Maintaining hold position.')">📍 Coords Verified</button>
+                <button class="btn-chip" onclick="quickSend('🚁 Evacuation team dispatched to your sector.')">🚁 Team Dispatched</button>
+                <button class="btn-chip" onclick="quickSend('⚠️ Severe weather inbound. Seek high ground.')">⚠️ Weather Warning</button>
+                <button class="btn-chip" onclick="quickSend('✅ Acknowledged. Supply drop scheduled in 15 mins.')">✅ Supply Drop</button>
+            </div>
+
+            <!-- Message Input Form -->
+            <form class="terminal-input-bar" id="msgForm" onsubmit="handleSendMessage(event)">
+                <div class="input-row">
+                    <select id="targetSelect" class="target-select">
+                        <option value="BROADCAST">📢 BROADCAST (All Nodes)</option>
+                    </select>
+                    <select id="prioritySelect" class="priority-select">
+                        <option value="2">Normal</option>
+                        <option value="1">Tactical (High)</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <input type="text" id="msgInput" placeholder="Enter off-grid tactical message..." autocomplete="off" required>
+                    <button type="submit" class="btn btn-primary" id="btnSend">TRANSMIT</button>
+                </div>
+            </form>
+        </aside>
+
+    </main>
+
+    <!-- MODAL 1: EMERGENCY SOS TRIGGER -->
+    <div class="modal-overlay hidden" id="sosModal">
+        <div class="modal-content modal-danger">
+            <div class="modal-header">
+                <h2>🚨 EMERGENCY SOS MESH BROADCAST</h2>
+                <button class="close-btn" onclick="closeModal('sosModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-alert-desc">
+                    This packet will preempt all routine traffic, bypass mesh backoff limits, and flood all reachable nodes with priority 0.
+                </p>
+
+                <div class="form-group">
+                    <label>Triage Urgency Level:</label>
+                    <div class="triage-selector">
+                        <label class="triage-opt opt-red">
+                            <input type="radio" name="triageLevel" value="RED" checked>
+                            <span>🔴 RED (Immediate / Life Threat)</span>
+                        </label>
+                        <label class="triage-opt opt-yellow">
+                            <input type="radio" name="triageLevel" value="YELLOW">
+                            <span>🟡 YELLOW (Urgent / Serious)</span>
+                        </label>
+                        <label class="triage-opt opt-green">
+                            <input type="radio" name="triageLevel" value="GREEN">
+                            <span>🟢 GREEN (Minor / Stable)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Persons Stranded / Injured:</label>
+                        <input type="number" id="sosPeople" value="4" min="1" max="100">
+                    </div>
+                    <div class="form-group half">
+                        <label>Originating Beacon Node:</label>
+                        <select id="sosSourceNode"></select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Reported Injuries / Medical Condition:</label>
+                    <input type="text" id="sosInjuries" value="Fractures, hypothermia, bleeding controlled">
+                </div>
+
+                <div class="form-group">
+                    <label>Critical Resource Needs:</label>
+                    <input type="text" id="sosSupplies" value="Medical trauma kit, drinking water, rescue boat">
+                </div>
+
+                <div class="form-group">
+                    <label>Situation Notes / Landmark:</label>
+                    <textarea id="sosNotes" rows="2">Trapped on 2nd-floor rooftop. Flood waters rising approx 15cm/hr.</textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('sosModal')">Cancel</button>
+                <button class="btn btn-sos pulse-red" onclick="dispatchSosAlert()">
+                    🚨 TRANSMIT SOS BEACON NOW
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PERFORMANCE EVALUATION & BENCHMARKS -->
+    <div class="modal-overlay hidden" id="benchModal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h2>📊 Performance Evaluation & Benchmark Analysis</h2>
+                <button class="close-btn" onclick="closeModal('benchModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="bench-tabs">
+                    <button class="bench-tab-btn active" onclick="switchBenchTab('tabPdr')">Packet Delivery vs Distance</button>
+                    <button class="bench-tab-btn" onclick="switchBenchTab('tabLatency')">Spreading Factor & Latency</button>
+                    <button class="bench-tab-btn" onclick="switchBenchTab('tabBattery')">Battery Longevity (LoRa vs 4G)</button>
+                    <button class="bench-tab-btn" onclick="switchBenchTab('tabHops')">Multi-Hop Reliability</button>
+                </div>
+
+                <!-- Tab 1: PDR vs Distance -->
+                <div class="bench-tab-pane" id="tabPdr">
+                    <h3>Packet Delivery Ratio (PDR %) vs Node Distance</h3>
+                    <p class="tab-desc">Evaluates link reliability across distance using Friis path loss and logarithmic fading at 868.1 MHz.</p>
+                    <div class="chart-wrapper">
+                        <canvas id="pdrChart" width="700" height="240"></canvas>
+                    </div>
+                    <table class="bench-table" id="pdrTable">
+                        <thead>
+                            <tr>
+                                <th>Distance</th>
+                                <th>RSSI (dBm)</th>
+                                <th>SNR (dB)</th>
+                                <th>PDR Success (%)</th>
+                                <th>Link Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Tab 2: SF vs Latency -->
+                <div class="bench-tab-pane hidden" id="tabLatency">
+                    <h3>Time-on-Air (ToA) & Sensitivity by Spreading Factor</h3>
+                    <p class="tab-desc">Semtech SX1262 Standard calculation for a 32-byte emergency payload at 125 kHz vs 250 kHz.</p>
+                    <div class="chart-wrapper">
+                        <canvas id="latencyChart" width="700" height="240"></canvas>
+                    </div>
+                    <table class="bench-table" id="latencyTable">
+                        <thead>
+                            <tr>
+                                <th>Spreading Factor</th>
+                                <th>Sensitivity (dBm)</th>
+                                <th>ToA (125 kHz BW)</th>
+                                <th>ToA (250 kHz BW)</th>
+                                <th>Recommended Mission Use</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Tab 3: Battery Longevity -->
+                <div class="bench-tab-pane hidden" id="tabBattery">
+                    <h3>Emergency Power Profile: LoRa Transceiver vs 4G Cellular in Dead Zones</h3>
+                    <div class="battery-cards-row" id="batteryCards">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Tab 4: Multi-Hop Reliability -->
+                <div class="bench-tab-pane hidden" id="tabHops">
+                    <h3>Multi-Hop Relay Delivery Analysis</h3>
+                    <table class="bench-table" id="hopsTable">
+                        <thead>
+                            <tr>
+                                <th>Hops Count</th>
+                                <th>Cumulative End-to-End PDR (%)</th>
+                                <th>Cumulative Latency (ms)</th>
+                                <th>Network Overhead</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('benchModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ANY NETWORK ACCESS & QR CODE -->
+    <div class="modal-overlay hidden" id="networkModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🌐 Universal Multi-Network Access</h2>
+                <button class="close-btn" onclick="closeModal('networkModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="tab-desc">
+                    Anyone can open and test this application on any phone, laptop, or tablet across different networks.
+                </p>
+
+                <!-- 1. Local Wi-Fi Access -->
+                <div class="network-access-card">
+                    <div class="net-title">
+                        <span class="dot dot-green"></span>
+                        <strong>1. Local Wi-Fi / Hotspot Access</strong>
+                    </div>
+                    <p class="net-desc">For phones, tablets, and laptops connected to the same Wi-Fi or phone hotspot:</p>
+                    <div class="url-copy-box">
+                        <input type="text" id="lanUrlInput" readonly value="http://192.168.1.53:5000">
+                        <button class="btn btn-primary btn-xs" onclick="copyNetUrl('lanUrlInput')">Copy</button>
+                    </div>
+                </div>
+
+                <!-- 2. Worldwide Public HTTPS Access -->
+                <div class="network-access-card" style="margin-top: 14px; border-left: 3px solid var(--color-cyan);">
+                    <div class="net-title">
+                        <span class="dot dot-pulse"></span>
+                        <strong>2. Worldwide Public Access (Any 4G / 5G / Remote Network)</strong>
+                    </div>
+                    <p class="net-desc">Accessible anywhere in the world over cellular data or external networks:</p>
+                    <div class="url-copy-box">
+                        <input type="text" id="publicUrlInput" readonly value="https://reading-based-each-banana.trycloudflare.com">
+                        <button class="btn btn-primary btn-xs" onclick="copyNetUrl('publicUrlInput')">Copy</button>
+                    </div>
+                </div>
+
+                <!-- 3. Mobile QR Code -->
+                <div class="qr-section" style="margin-top: 16px; text-align: center; background: rgba(10,14,22,0.6); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 8px; color: var(--color-cyan);">
+                        📱 SCAN WITH PHONE CAMERA TO OPEN INSTANTLY
+                    </div>
+                    <img id="networkQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://reading-based-each-banana.trycloudflare.com" alt="Scan QR Code" style="border-radius: 6px; border: 2px solid var(--color-cyan); width: 160px; height: 160px;">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">
+                        Point your mobile camera at the code above to open on any network.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('networkModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/mesh_canvas.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
